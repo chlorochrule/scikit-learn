@@ -125,7 +125,7 @@ class KNeighborsRegressor(NeighborsBase, KNeighborsMixin,
                           metric_params=metric_params, n_jobs=n_jobs, **kwargs)
         self.weights = _check_weights(weights)
 
-    def predict(self, X):
+    def predict(self, X, same_dist=False):
         """Predict the target for the provided data
 
         Parameters
@@ -141,7 +141,7 @@ class KNeighborsRegressor(NeighborsBase, KNeighborsMixin,
         """
         X = check_array(X, accept_sparse='csr')
 
-        neigh_dist, neigh_ind = self.kneighbors(X)
+        neigh_dist, neigh_ind = self.kneighbors(X, same_dist=same_dist)
 
         weights = _get_weights(neigh_dist, self.weights)
 

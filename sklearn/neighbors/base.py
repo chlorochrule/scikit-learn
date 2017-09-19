@@ -117,6 +117,7 @@ class NeighborsBase(six.with_metaclass(ABCMeta, BaseEstimator)):
         self.metric_params = metric_params
         self.p = p
         self.n_jobs = n_jobs
+        self.dist = None
 
         if algorithm not in ['auto', 'brute',
                              'kd_tree', 'ball_tree']:
@@ -270,7 +271,7 @@ class NeighborsBase(six.with_metaclass(ABCMeta, BaseEstimator)):
 class KNeighborsMixin(object):
     """Mixin for k-neighbors searches"""
 
-    def kneighbors(self, X=None, n_neighbors=None, return_distance=True):
+    def kneighbors(self, X=None, n_neighbors=None, return_distance=True, same_dist=False):
         """Finds the K-neighbors of a point.
 
         Returns indices of and distances to the neighbors of each point.
@@ -352,13 +353,18 @@ class KNeighborsMixin(object):
         n_jobs = _get_n_jobs(self.n_jobs)
         if self._fit_method == 'brute':
             # for efficiency, use squared euclidean distances
-            if self.effective_metric_ == 'euclidean':
-                dist = pairwise_distances(X, self._fit_X, 'euclidean',
-                                          n_jobs=n_jobs, squared=True)
+            if same_dist and self.dist is not None:
+                dist = self.dist
             else:
-                dist = pairwise_distances(
-                    X, self._fit_X, self.effective_metric_, n_jobs=n_jobs,
-                    **self.effective_metric_params_)
+                if self.effective_metric_ == 'euclidean':
+                    dist = pairwise_distances(X, self._fit_X, 'euclidean',
+                                              n_jobs=n_jobs, squared=True)
+                    self.dist = dist
+                else:
+                    dist = pairwise_distances(
+                        X, self._fit_X, self.effective_metric_, n_jobs=n_jobs,
+                        **self.effective_metric_params_)
+                    self.dist = dist
 
             neigh_ind = np.argpartition(dist, n_neighbors - 1, axis=1)
             neigh_ind = neigh_ind[:, :n_neighbors]
@@ -741,6 +747,7 @@ class SupervisedFloatMixin(object):
             Target values, array of float values, shape = [n_samples]
              or [n_samples, n_outputs]
         """
+        self.dist = None
         if not isinstance(X, (KDTree, BallTree)):
             X, y = check_X_y(X, y, "csr", multi_output=True)
         self._y = y
